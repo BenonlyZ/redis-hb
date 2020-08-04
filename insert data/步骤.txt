@@ -1,0 +1,5 @@
+1.修改脚本set.sh里的变量与实际符合
+2.执行脚本：sh set.sh
+完成后会在data-redis.txt里写入批量的“set key value”
+3.在运行redis的服务器上，进入data-redis.txt文件的目录下，执行命令：cat data-redis.txt | redis-cli -p 6379 --pipe
+ 运行结束后，会在redis的aof文件里写入大量数据。
