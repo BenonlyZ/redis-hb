@@ -1,0 +1,126 @@
+﻿apiVersion: v1
+data:
+  standalone.conf: |-
+    bind {{ .Values.bind_ip }}
+    port {{ .Values.redis_port }}
+    protected-mode no
+    daemonize no
+    supervised no
+    loglevel debug
+
+    save  900 1
+    save  300 10
+    save  60  10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump-6379.rdb
+    dir ../data
+
+    appendonly {{ .Values.if_appendonly }}
+    appendfilename  appendonly-6379.aof
+    appendfsync     always
+    no-appendfsync-on-rewrite   yes
+    aof-load-truncated   yes
+
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+data:
+  requirepass: {{ .Values.password | b64enc }}
+  masterauth: {{ .Values.password | b64enc }}
+metadata:
+  name: {{ .Release.Name }}-secret
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-svc
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - name: 6379-6379
+      port: {{ .Values.redis_port }}
+      protocol: TCP
+      targetPort: {{ .Values.redis_port }}
+  selector:
+    app: {{ .Release.Name }}
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.alauda.io/name: {{ .Release.Name }}.{{ .Release.Namespace }}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.alauda.io/name: {{ .Release.Name }}.{{ .Release.Namespace }}
+    spec:
+      affinity: {}
+      containers:
+        - env:
+            - name: REQUIREPASS
+              valueFrom:
+                secretKeyRef:
+                  key: requirepass
+                  name: {{ .Release.Name }}-secret
+            - name: MASTERAUTH
+              valueFrom:
+                secretKeyRef:
+                  key: masterauth
+                  name: {{ .Release.Name }}-secret
+          image: {{ .Values.image.repository }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: redis
+          {{ if .Values.command }}
+          command:
+            - 
+          {{ else }}
+          command:
+            - 
+          {{ end }}
+          resources:
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /redis/conf
+              name: configmap-{{ .Release.Name }}
+            {{ if eq .Values.if_appendonly "yes" }}
+            - mountPath: /redis/data
+              name: persistentvolumeclaim-standalone
+            {{ end }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: {{ .Release.Name }}-configmap
+          name: configmap-{{ .Release.Name }}
+        {{ if eq .Values.if_appendonly "yes" }}
+        - name: persistentvolumeclaim-standalone
+          persistentVolumeClaim:
+            claimName: standalone-pvc
+        {{ end }}

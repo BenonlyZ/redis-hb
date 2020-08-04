@@ -1,0 +1,6 @@
+﻿apiVersion: batch/v1
+name: redis-chart
+description: redis standalone单点的chart模式
+type: application
+version: 0.1.0
+appVersion: 1.16.0

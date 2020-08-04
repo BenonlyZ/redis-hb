@@ -1,0 +1,24 @@
+﻿# 按输入选择不同的启动命令
+command: ""
+
+bind_ip: 0.0.0.0
+redis_port: 6379
+
+# requirepass和masterauth，一般设置相同
+password: ""
+
+# 是否启动aof
+if_appendonly: "yes"
+
+#镜像地址
+image:
+  repository: ""
+  pullPolicy: ""
+
+resources: 
+  limits:
+    cpu: ""
+    memory: ""
+  requests:
+    cpu: ""
+    memory: ""
